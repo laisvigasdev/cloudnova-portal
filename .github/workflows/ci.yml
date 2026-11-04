@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Validate and Build
+    name: Build and Deploy
     runs-on: ubuntu-latest
 
     steps:
@@ -56,3 +56,40 @@ jobs:
           IMAGE=acrcloudnovalab26-ekara4gwc2cee2g6.azurecr.io/cloudnova-portal:${GITHUB_SHA}
           docker tag cloudnova-portal:ci "$IMAGE"
           docker push "$IMAGE"
+
+      - name: Deploy to Azure Container Instances
+        run: |
+          ACI_ID=$(az container show \
+            --resource-group rg-cloudnova-lab \
+            --name aci-cloudnova-web \
+            --query "keys(identity.userAssignedIdentities)[0]" \
+            --output tsv)
+
+          test -n "$ACI_ID"
+
+          IMAGE=acrcloudnovalab26-ekara4gwc2cee2g6.azurecr.io/cloudnova-portal:${GITHUB_SHA}
+
+          az container create \
+            --resource-group rg-cloudnova-lab \
+            --name aci-cloudnova-web \
+            --location norwayeast \
+            --image "$IMAGE" \
+            --os-type Linux \
+            --cpu 1 \
+            --memory 1.5 \
+            --ports 80 \
+            --ip-address Private \
+            --vnet vnet-cloudnova \
+            --subnet frontend-subnet \
+            --assign-identity "[system]" "$ACI_ID" \
+            --acr-identity "$ACI_ID" \
+            --restart-policy OnFailure \
+            --output none
+
+      - name: Verify ACI deployment
+        run: |
+          az container show \
+            --resource-group rg-cloudnova-lab \
+            --name aci-cloudnova-web \
+            --query "{state:instanceView.state,image:containers[0].image,ip:ipAddress.ip}" \
+            --output json
