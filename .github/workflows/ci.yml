@@ -38,7 +38,6 @@ jobs:
       - name: Build Docker image
         run: docker build -t cloudnova-portal:ci .
 
-        
       - name: Login to Azure via OIDC
         uses: azure/login@v3
         with:
@@ -48,3 +47,12 @@ jobs:
 
       - name: Verify Azure authentication
         run: az account show --query name --output tsv
+
+      - name: Login to Azure Container Registry
+        run: az acr login --name acrcloudnovalab26
+
+      - name: Push Docker image to ACR
+        run: |
+          IMAGE=acrcloudnovalab26-ekara4gwc2cee2g6.azurecr.io/cloudnova-portal:${GITHUB_SHA}
+          docker tag cloudnova-portal:ci "$IMAGE"
+          docker push "$IMAGE"
