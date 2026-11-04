@@ -1,0 +1,38 @@
+
+name: CloudNova CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Validate and Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate TypeScript
+        run: npm run check
+
+      - name: Build application
+        run: npm run build
+
+      - name: Build Docker image
+        run: docker build -t cloudnova-portal:ci .
